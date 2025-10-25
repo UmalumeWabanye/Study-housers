@@ -280,11 +280,9 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
     textDecorationLine: 'underline',
   },
   hostCard: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
     marginBottom: 24,

@@ -101,17 +101,34 @@ export default function SearchScreen() {
     return results.filter(result => {
       const { accommodation, property } = result;
       
-      // Price range filter
-      if (accommodation.priceNumeric < filters.priceRange.min || 
-          accommodation.priceNumeric > filters.priceRange.max) {
+      // Price range filter - strict filtering within the specified range
+      const price = accommodation.priceNumeric;
+      if (price < filters.priceRange.min || price > filters.priceRange.max) {
         return false;
       }
 
-      // Property types filter
+      // Property types filter - check against accommodation.type field
       if (filters.propertyTypes.length > 0 && 
           !filters.propertyTypes.some(type => 
-            accommodation.subtitle.toLowerCase().includes(type.toLowerCase())
+            accommodation.type.toLowerCase().includes(type.toLowerCase()) ||
+            accommodation.title.toLowerCase().includes(type.toLowerCase())
           )) {
+        return false;
+      }
+
+      // Room types filter - check against roomType and other relevant fields
+      if (filters.roomTypes.length > 0 && 
+          !filters.roomTypes.some(roomType => {
+            const lowerRoomType = roomType.toLowerCase();
+            const accommodationFields = [
+              accommodation.roomType || '',
+              accommodation.title,
+              accommodation.subtitle,
+              accommodation.features.bathrooms
+            ].join(' ').toLowerCase();
+            
+            return accommodationFields.includes(lowerRoomType);
+          })) {
         return false;
       }
 
@@ -131,14 +148,29 @@ export default function SearchScreen() {
         return false;
       }
 
-      // Amenities filter
+      // Amenities filter - check both accommodation and building amenities
       if (filters.amenities.length > 0) {
-        const hasAllAmenities = filters.amenities.every(amenity =>
-          accommodation.amenities.some(accAmenity => 
-            accAmenity.toLowerCase().includes(amenity.toLowerCase())
+        const allAmenities = [...accommodation.amenities, ...property.buildingAmenities];
+        const hasMatchingAmenities = filters.amenities.some(filterAmenity =>
+          allAmenities.some(accAmenity => 
+            accAmenity.toLowerCase().includes(filterAmenity.toLowerCase())
           )
         );
-        if (!hasAllAmenities) return false;
+        if (!hasMatchingAmenities) return false;
+      }
+
+      // Availability filter
+      if (filters.availability === 'available' && !accommodation.availability.available) {
+        return false;
+      }
+      if (filters.availability === 'soon') {
+        // Check if available within next 3 months
+        const moveInDate = new Date(accommodation.availability.moveInDate);
+        const threeMonthsFromNow = new Date();
+        threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
+        if (moveInDate > threeMonthsFromNow) {
+          return false;
+        }
       }
 
       // Furnished filter
@@ -150,7 +182,12 @@ export default function SearchScreen() {
       }
 
       // Parking filter
-      if (filters.parking && !accommodation.features.parking) {
+      if (filters.parking === true && !accommodation.features.parking) {
+        return false;
+      }
+
+      // Pet friendly filter
+      if (filters.petFriendly === true && !accommodation.features.petFriendly) {
         return false;
       }
 
@@ -159,8 +196,13 @@ export default function SearchScreen() {
   };
 
   const getActiveFiltersCount = () => {
+    const defaultFilters = SearchStorage.getDefaultFilters();
     let count = 0;
-    if (searchFilters.priceRange.min > 0 || searchFilters.priceRange.max < 20000) count++;
+    
+    // Check if price range has been modified from defaults
+    if (searchFilters.priceRange.min !== defaultFilters.priceRange.min || 
+        searchFilters.priceRange.max !== defaultFilters.priceRange.max) count++;
+    
     if (searchFilters.propertyTypes.length > 0) count++;
     if (searchFilters.roomTypes.length > 0) count++;
     if (searchFilters.locations.length > 0) count++;

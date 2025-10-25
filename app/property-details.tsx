@@ -199,7 +199,7 @@ export default function PropertyDetailsScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <TouchableOpacity 
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: colors.surface }]}
           onPress={() => router.back()}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -499,7 +499,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',

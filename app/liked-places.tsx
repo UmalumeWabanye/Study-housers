@@ -50,10 +50,10 @@ export default function LikedPlaces() {
 
   const EmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="heart-outline" size={80} color={colors.iconSecondary} />
-      <ThemedText style={styles.emptyTitle}>No liked places yet</ThemedText>
+      <Ionicons name="bookmark-outline" size={80} color={colors.iconSecondary} />
+      <ThemedText style={styles.emptyTitle}>No bookmarked places yet</ThemedText>
       <ThemedText variant="secondary" style={styles.emptySubtitle}>
-        Start exploring properties and save your favorites by tapping the heart icon
+        Start exploring properties and save your favorites by tapping the bookmark icon
       </ThemedText>
       <TouchableOpacity 
         style={[styles.exploreButton, { backgroundColor: colors.primary }]}
@@ -74,7 +74,7 @@ export default function LikedPlaces() {
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Liked Places</ThemedText>
+          <ThemedText style={styles.headerTitle}>Bookmarked Places</ThemedText>
           <View style={styles.placeholder} />
         </View>
         <View style={styles.loadingContainer}>
@@ -98,7 +98,7 @@ export default function LikedPlaces() {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Liked Places</ThemedText>
+        <ThemedText style={styles.headerTitle}>Bookmarked Places</ThemedText>
         <View style={styles.placeholder} />
       </View>
 
@@ -130,11 +130,11 @@ export default function LikedPlaces() {
                 
                 {/* Remove from favorites button */}
                 <TouchableOpacity 
-                  style={[styles.heartButton, { backgroundColor: colors.surface }]}
+                  style={[styles.bookmarkButton, { backgroundColor: colors.surface }]}
                   onPress={() => removeLikedProperty(property.id)}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <Ionicons name="heart" size={20} color={colors.error} />
+                  <Ionicons name="bookmark" size={20} color={colors.primary} />
                 </TouchableOpacity>
 
                 <View style={styles.propertyContent}>
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 180,
   },
-  heartButton: {
+  bookmarkButton: {
     position: 'absolute',
     top: 12,
     right: 12,

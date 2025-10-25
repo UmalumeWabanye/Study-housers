@@ -1,8 +1,9 @@
 import { ThemedText, ThemedView } from '@/components/themed-components';
 import { useTheme } from '@/hooks/use-theme';
+import { PropertyAnalytics } from '@/lib/propertyAnalytics';
 import { SearchFilters } from '@/lib/searchStorage';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Modal,
@@ -22,6 +23,8 @@ interface AdvancedSearchModalProps {
   initialFilters: SearchFilters;
 }
 
+// Smart filter suggestions from PropertyAnalytics
+
 const ROOM_TYPES = ['Single', 'Double', 'Shared', 'En-suite', 'Studio'];
 const PROPERTY_TYPES = ['Residence Room', 'Shared Flat', 'Studio Apartment', 'Co-Living Space', 'Traditional Digs', 'Bachelor Flat'];
 const LOCATIONS = ['Observatory', 'Rondebosch', 'Claremont', 'Mowbray', 'Woodstock', 'Cape Town CBD', 'Bellville', 'Stellenbosch', 'Braamfontein', 'Melville'];
@@ -37,6 +40,14 @@ export default function AdvancedSearchModal({
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const [filters, setFilters] = useState<SearchFilters>(initialFilters);
+  const [smartSuggestions, setSmartSuggestions] = useState(PropertyAnalytics.getSmartFilterSuggestions(''));
+
+  useEffect(() => {
+    // Update smart suggestions when modal becomes visible
+    if (visible) {
+      setSmartSuggestions(PropertyAnalytics.getSmartFilterSuggestions(''));
+    }
+  }, [visible]);
 
   const updateFilters = (updates: Partial<SearchFilters>) => {
     setFilters(prev => ({ ...prev, ...updates }));
@@ -144,6 +155,48 @@ export default function AdvancedSearchModal({
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Price Range */}
           <FilterSection title="Price Range">
+            {/* Smart Price Range Suggestions */}
+            <View style={styles.priceRangeChips}>
+              {smartSuggestions.priceRanges.map((range, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.priceChip,
+                    {
+                      backgroundColor: (filters.priceRange.min === range.min && filters.priceRange.max === range.max) 
+                        ? colors.primary : colors.surface,
+                      borderColor: (filters.priceRange.min === range.min && filters.priceRange.max === range.max)
+                        ? colors.primary : colors.border,
+                    },
+                  ]}
+                  onPress={() => updateFilters({ priceRange: { min: range.min, max: range.max } })}
+                >
+                  <ThemedText
+                    style={[
+                      styles.priceChipText,
+                      { 
+                        color: (filters.priceRange.min === range.min && filters.priceRange.max === range.max)
+                          ? '#fff' : colors.text 
+                      },
+                    ]}
+                  >
+                    {range.label}
+                  </ThemedText>
+                  <ThemedText
+                    style={[
+                      styles.priceChipCount,
+                      { 
+                        color: (filters.priceRange.min === range.min && filters.priceRange.max === range.max)
+                          ? '#fff' : colors.textSecondary 
+                      },
+                    ]}
+                  >
+                    ({range.count} options)
+                  </ThemedText>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             <View style={styles.priceInputContainer}>
               <View style={styles.priceInput}>
                 <ThemedText variant="secondary">Min (R)</ThemedText>
@@ -230,9 +283,25 @@ export default function AdvancedSearchModal({
           </FilterSection>
 
           {/* Amenities */}
-          <FilterSection title="Amenities">
+          <FilterSection title="Popular Amenities">
+            <ThemedText variant="secondary" style={styles.sectionSubtitle}>
+              Most common amenities across properties
+            </ThemedText>
             <MultiSelectChips
-              options={AMENITIES}
+              options={smartSuggestions.popularAmenities.slice(0, 8).map(a => a.name)}
+              selectedValues={filters.amenities}
+              onToggle={(value) => toggleArrayFilter(filters.amenities, value, (newArray) => 
+                updateFilters({ amenities: newArray })
+              )}
+            />
+            
+            <ThemedText variant="secondary" style={[styles.sectionSubtitle, { marginTop: 16 }]}>
+              Additional amenities
+            </ThemedText>
+            <MultiSelectChips
+              options={AMENITIES.filter(amenity => 
+                !smartSuggestions.popularAmenities.slice(0, 8).map(a => a.name).includes(amenity)
+              )}
               selectedValues={filters.amenities}
               onToggle={(value) => toggleArrayFilter(filters.amenities, value, (newArray) => 
                 updateFilters({ amenities: newArray })
@@ -376,6 +445,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 16,
   },
+  sectionSubtitle: {
+    fontSize: 14,
+    marginBottom: 12,
+  },
   priceInputContainer: {
     flexDirection: 'row',
     gap: 16,
@@ -448,5 +521,24 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  priceRangeChips: {
+    marginBottom: 16,
+  },
+  priceChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  priceChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  priceChipCount: {
+    fontSize: 12,
+    marginTop: 2,
   },
 });
