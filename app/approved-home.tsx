@@ -4,7 +4,7 @@ import { useUserStatus } from '@/context/UserStatusContext';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Dimensions,
@@ -53,38 +53,69 @@ const QUICK_ACTIONS = [
   },
 ];
 
-const ANNOUNCEMENTS = [
-  {
-    id: '1',
-    title: 'Welcome to UCT Upper Campus Residence!',
-    message: 'Your room B204 is ready. Please collect your physical key from reception during office hours (8 AM - 5 PM).',
-    time: '2 hours ago',
-    type: 'welcome',
-    urgent: false,
-  },
-  {
-    id: '2',
-    title: 'WiFi Network Update',
-    message: 'New WiFi password for UCT-Student network: UCT2025!Student. Update your devices by tomorrow.',
-    time: '5 hours ago',
-    type: 'info',
-    urgent: true,
-  },
-  {
-    id: '3',
-    title: 'Study Lounge Maintenance',
-    message: 'The study lounge will be closed for deep cleaning on Monday, 28 Oct from 9 AM - 2 PM.',
-    time: '1 day ago',
-    type: 'maintenance',
-    urgent: false,
-  },
-];
+// Generate announcements based on accommodation
+const getAnnouncements = (accommodation: any) => {
+  const universityShort = accommodation.university.split(' ').map((word: string) => word.charAt(0)).join('');
+  
+  return [
+    {
+      id: '1',
+      title: `Welcome to ${accommodation.propertyName}!`,
+      message: `Your room ${accommodation.roomNumber} is ready. Please collect your physical key from reception during office hours (8 AM - 5 PM).`,
+      time: '2 hours ago',
+      type: 'welcome',
+      urgent: false,
+    },
+    {
+      id: '2',
+      title: 'WiFi Network Update',
+      message: `New WiFi password for ${universityShort}-Student network: ${universityShort}2025!Student. Update your devices by tomorrow.`,
+      time: '5 hours ago',
+      type: 'info',
+      urgent: true,
+    },
+    {
+      id: '3',
+      title: 'Study Lounge Maintenance',
+      message: 'The study lounge will be closed for deep cleaning on Monday, 28 Oct from 9 AM - 2 PM.',
+      time: '1 day ago',
+      type: 'maintenance',
+      urgent: false,
+    },
+  ];
+};
 
 export default function ApprovedHomeScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
-  const { userName, profileImage } = useProfile();
-  const { approvedAccommodation, resetToSearching } = useUserStatus();
+  const { profileImage, userName } = useProfile();
+  const { approvedAccommodation, isFirstTimeAccess, markAsReturningUser } = useUserStatus();
+  const [showResidenceCard, setShowResidenceCard] = useState(true);
+
+  // Generate dynamic announcements based on accommodation
+  const announcements = approvedAccommodation ? getAnnouncements(approvedAccommodation) : [];
+
+  // Mark as returning user after component mounts (first visit logged)
+  useEffect(() => {
+    console.log('ApprovedHome: isFirstTimeAccess =', isFirstTimeAccess);
+    if (isFirstTimeAccess) {
+      // Give user 2 seconds to see the welcome message before marking as returning
+      const timer = setTimeout(() => {
+        console.log('ApprovedHome: Marking as returning user');
+        markAsReturningUser();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isFirstTimeAccess, markAsReturningUser]);
+
+  // Auto-fade residence card after 40 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowResidenceCard(false);
+    }, 40000); // 40 seconds = 40,000 ms
+
+    return () => clearTimeout(timer);
+  }, []);
 
   if (!approvedAccommodation) {
     return (
@@ -116,17 +147,7 @@ export default function ApprovedHomeScreen() {
     );
   };
 
-  // For demo purposes - button to reset to searching phase
-  const handleResetDemo = () => {
-    Alert.alert(
-      'Demo Reset',
-      'Reset to searching phase? (This is just for demo purposes)',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Reset', style: 'destructive', onPress: resetToSearching },
-      ]
-    );
-  };
+
 
   return (
     <ThemedView style={styles.container}>
@@ -138,13 +159,13 @@ export default function ApprovedHomeScreen() {
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <View style={styles.welcomeSection}>
             <ThemedText variant="secondary" style={styles.welcomeText}>
-              Welcome back,
+              {isFirstTimeAccess ? 'Welcome,' : 'Welcome back,'}
             </ThemedText>
             <ThemedText style={styles.welcomeTitle}>
               {userName} 👋
             </ThemedText>
             <ThemedText variant="tertiary" style={styles.venueText}>
-              {approvedAccommodation.propertyName} • Room {approvedAccommodation.roomNumber}
+              {approvedAccommodation.propertyName}
             </ThemedText>
           </View>
           
@@ -162,45 +183,47 @@ export default function ApprovedHomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Property Info Card */}
-        <View style={[styles.propertyCard, { 
-          backgroundColor: colors.cardBackground,
-          borderColor: colors.cardBorder,
-          shadowColor: colors.shadow,
-          shadowOpacity: colors.shadowOpacity,
-        }]}>
-          <View style={styles.propertyHeader}>
-            <View style={styles.propertyInfo}>
-              <ThemedText style={styles.propertyName}>
-                {approvedAccommodation.propertyName}
-              </ThemedText>
-              <ThemedText variant="secondary" style={styles.propertyAddress}>
-                {approvedAccommodation.address}
-              </ThemedText>
-              <ThemedText variant="tertiary" style={styles.propertyDetails}>
-                Room {approvedAccommodation.roomNumber} • {approvedAccommodation.price}
-              </ThemedText>
+        {/* Property Info Card - Auto-fades after 40 seconds */}
+        {showResidenceCard && (
+          <View style={[styles.propertyCard, { 
+            backgroundColor: colors.cardBackground,
+            borderColor: colors.cardBorder,
+            shadowColor: colors.shadow,
+            shadowOpacity: colors.shadowOpacity,
+          }]}>
+            <View style={styles.propertyHeader}>
+              <View style={styles.propertyInfo}>
+                <ThemedText style={styles.propertyName}>
+                  {approvedAccommodation.propertyName}
+                </ThemedText>
+                <ThemedText variant="secondary" style={styles.propertyAddress}>
+                  {approvedAccommodation.address}
+                </ThemedText>
+                <ThemedText variant="tertiary" style={styles.propertyDetails}>
+                  Room {approvedAccommodation.roomNumber}
+                </ThemedText>
+              </View>
+              <View style={[styles.statusBadge, { backgroundColor: colors.success }]}>
+                <ThemedText style={styles.statusText}>Approved</ThemedText>
+              </View>
             </View>
-            <View style={[styles.statusBadge, { backgroundColor: colors.success }]}>
-              <ThemedText style={styles.statusText}>Approved</ThemedText>
+            
+            <View style={styles.moveInInfo}>
+              <View style={styles.moveInDate}>
+                <Ionicons name="calendar-outline" size={16} color={colors.iconSecondary} />
+                <ThemedText variant="secondary" style={styles.moveInText}>
+                  Move-in: {new Date(approvedAccommodation.moveInDate).toLocaleDateString()}
+                </ThemedText>
+              </View>
+              <View style={styles.leaseEnd}>
+                <Ionicons name="time-outline" size={16} color={colors.iconSecondary} />
+                <ThemedText variant="secondary" style={styles.leaseText}>
+                  Lease ends: {new Date(approvedAccommodation.leaseEndDate).toLocaleDateString()}
+                </ThemedText>
+              </View>
             </View>
           </View>
-          
-          <View style={styles.moveInInfo}>
-            <View style={styles.moveInDate}>
-              <Ionicons name="calendar-outline" size={16} color={colors.iconSecondary} />
-              <ThemedText variant="secondary" style={styles.moveInText}>
-                Move-in: {new Date(approvedAccommodation.moveInDate).toLocaleDateString()}
-              </ThemedText>
-            </View>
-            <View style={styles.leaseEnd}>
-              <Ionicons name="time-outline" size={16} color={colors.iconSecondary} />
-              <ThemedText variant="secondary" style={styles.leaseText}>
-                Lease ends: {new Date(approvedAccommodation.leaseEndDate).toLocaleDateString()}
-              </ThemedText>
-            </View>
-          </View>
-        </View>
+        )}
 
         {/* Quick Actions */}
         <View style={styles.section}>
@@ -239,26 +262,32 @@ export default function ApprovedHomeScreen() {
             </TouchableOpacity>
           </View>
           
-          <View style={styles.announcements}>
-            {ANNOUNCEMENTS.slice(0, 2).map((announcement) => (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.announcementsScrollContainer}
+            style={styles.announcementsScroll}
+          >
+            {announcements.map((announcement) => (
               <TouchableOpacity
                 key={announcement.id}
                 style={[styles.announcementCard, {
                   backgroundColor: colors.cardBackground,
                   borderColor: colors.cardBorder,
-                  borderLeftColor: announcement.urgent ? colors.warning : colors.primary,
+                  shadowColor: colors.shadow,
+                  shadowOpacity: colors.shadowOpacity,
                 }]}
                 onPress={() => router.push('/news-feed')}
               >
                 <View style={styles.announcementHeader}>
-                  <ThemedText style={styles.announcementTitle}>
+                  <ThemedText style={styles.announcementTitle} numberOfLines={2}>
                     {announcement.title}
                   </ThemedText>
                   <ThemedText variant="tertiary" style={styles.announcementTime}>
                     {announcement.time}
                   </ThemedText>
                 </View>
-                <ThemedText variant="secondary" style={styles.announcementMessage}>
+                <ThemedText variant="secondary" style={styles.announcementMessage} numberOfLines={3}>
                   {announcement.message}
                 </ThemedText>
                 {announcement.urgent && (
@@ -268,7 +297,7 @@ export default function ApprovedHomeScreen() {
                 )}
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         </View>
 
         {/* Emergency Contacts */}
@@ -298,16 +327,6 @@ export default function ApprovedHomeScreen() {
             ))}
           </View>
         </View>
-
-        {/* Demo Reset Button */}
-        <TouchableOpacity
-          style={[styles.demoButton, { backgroundColor: colors.error }]}
-          onPress={handleResetDemo}
-        >
-          <ThemedText style={styles.demoButtonText}>
-            Demo: Reset to Searching Phase
-          </ThemedText>
-        </TouchableOpacity>
 
         <View style={{ height: 20 }} />
       </ScrollView>
@@ -401,24 +420,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   moveInInfo: {
-    flexDirection: 'row',
-    gap: 24,
+    flexDirection: 'column',
+    gap: 12,
   },
   moveInDate: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
   },
   leaseEnd: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
   },
   moveInText: {
     fontSize: 13,
+    flex: 1,
+    flexWrap: 'wrap',
   },
   leaseText: {
     fontSize: 13,
+    flex: 1,
+    flexWrap: 'wrap',
   },
   section: {
     marginBottom: 32,
@@ -468,40 +493,52 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
   },
+  announcementsScroll: {
+    marginHorizontal: -20, // Negative margin to extend to screen edges
+    paddingHorizontal: 20,
+  },
+  announcementsScrollContainer: {
+    gap: 16,
+    paddingRight: 20,
+  },
   announcements: {
     gap: 12,
   },
   announcementCard: {
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     borderWidth: 1,
-    borderLeftWidth: 4,
+    width: width * 0.75, // Card width as percentage of screen width
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 3,
   },
   announcementHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    flexDirection: 'column',
+    marginBottom: 12,
   },
   announcementTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    flex: 1,
-    marginRight: 12,
+    marginBottom: 8,
+    lineHeight: 24,
   },
   announcementTime: {
-    fontSize: 12,
+    fontSize: 13,
+    opacity: 0.7,
   },
   announcementMessage: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 12,
   },
   urgentBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 8,
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   urgentText: {
     color: '#fff',
@@ -538,16 +575,5 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  demoButton: {
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  demoButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
   },
 });

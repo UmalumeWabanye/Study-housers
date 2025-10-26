@@ -8,6 +8,7 @@ import {
     Alert,
     Animated,
     Dimensions,
+    ScrollView,
     StyleSheet,
     TouchableOpacity,
     View,
@@ -16,10 +17,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
-// Mock access levels and permissions
-const ACCESS_PERMISSIONS = [
+// Generate access permissions based on accommodation
+const getAccessPermissions = (accommodation: any) => [
   { id: '1', name: 'Main Building', icon: 'business', granted: true },
-  { id: '2', name: 'Room B204', icon: 'key', granted: true },
+  { id: '2', name: `Room ${accommodation.roomNumber}`, icon: 'key', granted: true },
   { id: '3', name: 'Study Lounge', icon: 'library', granted: true },
   { id: '4', name: 'Gym & Recreation', icon: 'fitness', granted: true },
   { id: '5', name: 'Laundry Room', icon: 'shirt', granted: true },
@@ -28,10 +29,11 @@ const ACCESS_PERMISSIONS = [
   { id: '8', name: 'Conference Rooms', icon: 'people', granted: false },
 ];
 
-const ACCESS_LOGS = [
+// Generate access logs based on accommodation
+const getAccessLogs = (accommodation: any) => [
   {
     id: '1',
-    location: 'Room B204',
+    location: `Room ${accommodation.roomNumber}`,
     timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
     type: 'entry',
     status: 'granted',
@@ -73,7 +75,12 @@ export default function AccessCardScreen() {
   const { approvedAccommodation } = useUserStatus();
   const [cardFlipped, setCardFlipped] = useState(false);
   const [scanAnimation] = useState(new Animated.Value(0));
+  const [flipAnimation] = useState(new Animated.Value(0));
   const [isScanning, setIsScanning] = useState(false);
+
+  // Generate dynamic data based on approved accommodation
+  const accessPermissions = approvedAccommodation ? getAccessPermissions(approvedAccommodation) : [];
+  const accessLogs = approvedAccommodation ? getAccessLogs(approvedAccommodation) : [];
 
   useEffect(() => {
     // Pulse animation for the scan button
@@ -96,10 +103,17 @@ export default function AccessCardScreen() {
   }, [scanAnimation]);
 
   const handleCardFlip = () => {
+    Animated.timing(flipAnimation, {
+      toValue: cardFlipped ? 0 : 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start();
     setCardFlipped(!cardFlipped);
   };
 
   const handleScanAccess = () => {
+    if (!approvedAccommodation) return;
+    
     setIsScanning(true);
     
     // Simulate scanning process
@@ -107,7 +121,7 @@ export default function AccessCardScreen() {
       setIsScanning(false);
       Alert.alert(
         'Access Granted',
-        'Welcome to Room B204. Door unlocked.',
+        `Welcome to Room ${approvedAccommodation.roomNumber}. Door unlocked.`,
         [{ text: 'OK' }]
       );
     }, 2000);
@@ -150,6 +164,27 @@ export default function AccessCardScreen() {
     outputRange: [0.95, 1.05],
   });
 
+  // Flip animation interpolations
+  const frontInterpolate = flipAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
+  const backInterpolate = flipAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['180deg', '0deg'],
+  });
+
+  const frontAnimatedStyle = {
+    transform: [{ rotateY: frontInterpolate }],
+  };
+
+  const backAnimatedStyle = {
+    transform: [{ rotateY: backInterpolate }],
+  };
+
+
+
   if (!approvedAccommodation) {
     return (
       <ThemedView style={styles.container}>
@@ -183,7 +218,11 @@ export default function AccessCardScreen() {
         </View>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Digital Card */}
         <TouchableOpacity 
           style={styles.cardContainer} 
@@ -198,59 +237,73 @@ export default function AccessCardScreen() {
               shadowOpacity: 0.3,
             }
           ]}>
-            {!cardFlipped ? (
-              /* Front of Card */
-              <View style={styles.cardFront}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.universityLogo}>
-                    <Ionicons name="school" size={24} color="#fff" />
-                  </View>
-                  <ThemedText style={styles.universityName}>
-                    University of Cape Town
+            {/* Front of Card */}
+            <Animated.View style={[
+              styles.cardFront,
+              frontAnimatedStyle,
+              {
+                backfaceVisibility: 'hidden',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                padding: 16,
+              }
+            ]}>
+              <View style={styles.cardHeader}>
+                <View style={styles.universityLogo}>
+                  <Ionicons name="school" size={20} color="#fff" />
+                </View>
+                <ThemedText style={styles.universityName}>
+                  {approvedAccommodation.university}
+                </ThemedText>
+              </View>
+
+              <View style={styles.cardBody}>
+                <ThemedText style={styles.cardTitle}>STUDENT RESIDENCE ACCESS</ThemedText>
+                <ThemedText style={styles.studentName}>{userName || 'Student Name'}</ThemedText>
+                <ThemedText style={styles.studentNumber}>
+                  ID: STDNT123456
+                </ThemedText>
+              </View>
+
+              <View style={styles.cardFooter}>
+                <View style={styles.validDates}>
+                  <ThemedText style={styles.validText}>VALID FROM</ThemedText>
+                  <ThemedText style={styles.validDate} numberOfLines={1}>
+                    {new Date(approvedAccommodation.moveInDate).toLocaleDateString()}
                   </ThemedText>
                 </View>
-
-                <View style={styles.cardBody}>
-                  <ThemedText style={styles.cardTitle}>STUDENT RESIDENCE ACCESS</ThemedText>
-                  <ThemedText style={styles.studentName}>{userName || 'Student Name'}</ThemedText>
-                  <ThemedText style={styles.studentNumber}>
-                    ID: STDNT123456
+                <View style={[styles.validDates, { alignItems: 'flex-end' }]}>
+                  <ThemedText style={styles.validText}>EXPIRES</ThemedText>
+                  <ThemedText style={styles.validDate} numberOfLines={1}>
+                    {new Date(approvedAccommodation.leaseEndDate).toLocaleDateString()}
                   </ThemedText>
-                  <ThemedText style={styles.residenceName}>
-                    {approvedAccommodation.propertyName}
-                  </ThemedText>
-                  <ThemedText style={styles.roomNumber}>
-                    Room {approvedAccommodation.roomNumber}
-                  </ThemedText>
-                </View>
-
-                <View style={styles.cardFooter}>
-                  <View style={styles.validDates}>
-                    <ThemedText style={styles.validText}>VALID FROM</ThemedText>
-                    <ThemedText style={styles.validDate}>
-                      {new Date(approvedAccommodation.moveInDate).toLocaleDateString()}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.validDates}>
-                    <ThemedText style={styles.validText}>EXPIRES</ThemedText>
-                    <ThemedText style={styles.validDate}>
-                      {new Date(approvedAccommodation.leaseEndDate).toLocaleDateString()}
-                    </ThemedText>
-                  </View>
-                </View>
-
-                <View style={styles.tapHint}>
-                  <ThemedText style={styles.tapText}>Tap to flip</ThemedText>
                 </View>
               </View>
-            ) : (
-              /* Back of Card */
-              <View style={styles.cardBack}>
-                <View style={styles.cardHeader}>
-                  <ThemedText style={styles.accessCodeTitle}>ACCESS CODE</ThemedText>
-                </View>
 
-                <View style={styles.qrCodeContainer}>
+              <View style={styles.tapHint}>
+                <ThemedText style={styles.tapText}>Tap to flip</ThemedText>
+              </View>
+            </Animated.View>
+
+            {/* Back of Card */}
+            <Animated.View style={[
+              styles.cardBack,
+              backAnimatedStyle,
+              {
+                backfaceVisibility: 'hidden',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                padding: 16,
+              }
+            ]}>
+              <View style={styles.backCardBody}>
+                <View style={styles.qrCodeSection}>
                   <View style={[styles.qrCode, { backgroundColor: '#fff' }]}>
                     <View style={styles.qrPattern}>
                       {Array.from({ length: 25 }).map((_, i) => (
@@ -268,19 +321,31 @@ export default function AccessCardScreen() {
                     {approvedAccommodation.accessCode}
                   </ThemedText>
                 </View>
+              </View>
+
+              <View style={styles.backCardFooter}>
+                <View style={styles.accommodationInfo}>
+                  <ThemedText style={styles.accommodationTitle}>ACCOMMODATION</ThemedText>
+                  <ThemedText style={styles.accommodationName} numberOfLines={2}>
+                    {approvedAccommodation.propertyName}
+                  </ThemedText>
+                  <ThemedText style={styles.accommodationRoom}>
+                    Room {approvedAccommodation.roomNumber}
+                  </ThemedText>
+                </View>
 
                 <View style={styles.emergencyInfo}>
-                  <ThemedText style={styles.emergencyTitle}>EMERGENCY CONTACT</ThemedText>
+                  <ThemedText style={styles.emergencyTitle}>EMERGENCY</ThemedText>
                   <ThemedText style={styles.emergencyNumber}>
                     {approvedAccommodation.emergencyContacts[0]?.phone || '+27 21 650 9111'}
                   </ThemedText>
                 </View>
-
-                <View style={styles.tapHint}>
-                  <ThemedText style={styles.tapText}>Tap to flip</ThemedText>
-                </View>
               </View>
-            )}
+
+              <View style={styles.tapHint}>
+                <ThemedText style={styles.tapText}>Tap to flip</ThemedText>
+              </View>
+            </Animated.View>
           </View>
         </TouchableOpacity>
 
@@ -319,7 +384,7 @@ export default function AccessCardScreen() {
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Access Permissions</ThemedText>
           <View style={styles.permissionsGrid}>
-            {ACCESS_PERMISSIONS.map((permission) => (
+            {accessPermissions.map((permission) => (
               <TouchableOpacity
                 key={permission.id}
                 style={[
@@ -372,7 +437,7 @@ export default function AccessCardScreen() {
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Recent Access Activity</ThemedText>
           <View style={styles.accessLog}>
-            {ACCESS_LOGS.slice(0, 4).map((log) => (
+            {accessLogs.slice(0, 4).map((log) => (
               <View 
                 key={log.id}
                 style={[
@@ -410,7 +475,7 @@ export default function AccessCardScreen() {
         </View>
 
         <View style={{ height: 20 }} />
-      </View>
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -445,30 +510,54 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
+  scrollContent: {
+    paddingBottom: 20,
+  },
   cardContainer: {
     marginBottom: 24,
     alignItems: 'center',
   },
   accessCard: {
     width: width - 60,
-    height: 200,
+    height: 240,
     borderRadius: 16,
-    padding: 20,
+    padding: 16,
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 16,
     elevation: 8,
   },
   cardFront: {
     flex: 1,
+    flexDirection: 'column',
   },
   cardBack: {
     flex: 1,
+    flexDirection: 'column',
+  },
+  backCardHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  backCardBody: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 20,
+  },
+  backCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginTop: 12,
+  },
+  qrCodeSection: {
+    alignItems: 'center',
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   universityLogo: {
     width: 32,
@@ -480,69 +569,79 @@ const styles = StyleSheet.create({
   },
   universityName: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     opacity: 0.9,
+    flex: 1,
+    flexWrap: 'wrap',
   },
   cardBody: {
     flex: 1,
-    justifyContent: 'center',
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
+    marginBottom: 8,
   },
   cardTitle: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '700',
     opacity: 0.8,
-    marginBottom: 8,
     letterSpacing: 1,
+    marginBottom: 4,
   },
   studentName: {
     color: '#fff',
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 1,
   },
   studentNumber: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '500',
     opacity: 0.9,
-    marginBottom: 12,
+    marginBottom: 6,
   },
   residenceName: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   roomNumber: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '700',
+    marginBottom: 4,
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingHorizontal: 2,
   },
   validDates: {
+    flex: 1,
     alignItems: 'flex-start',
+    maxWidth: '48%',
   },
   validText: {
     color: '#fff',
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '600',
     opacity: 0.7,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
+    marginBottom: 2,
   },
   validDate: {
     color: '#fff',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
+    flexWrap: 'wrap',
   },
   tapHint: {
-    position: 'absolute',
-    bottom: 8,
-    right: 20,
+    alignSelf: 'flex-end',
+    marginTop: 4,
   },
   tapText: {
     color: '#fff',
@@ -558,16 +657,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   qrCodeContainer: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 12,
   },
   qrCode: {
-    width: 80,
-    height: 80,
+    width: 70,
+    height: 70,
     borderRadius: 8,
-    padding: 8,
-    marginBottom: 12,
+    padding: 6,
+    marginBottom: 8,
   },
   qrPattern: {
     flex: 1,
@@ -584,21 +683,48 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 2,
   },
+  accommodationInfo: {
+    flex: 1,
+    alignItems: 'flex-start',
+    marginRight: 8,
+  },
+  accommodationTitle: {
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: '700',
+    opacity: 0.7,
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  accommodationName: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  accommodationRoom: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   emergencyInfo: {
-    alignItems: 'center',
+    flex: 1,
+    alignItems: 'flex-end',
+    marginLeft: 8,
   },
   emergencyTitle: {
     color: '#fff',
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '600',
     opacity: 0.7,
     letterSpacing: 0.5,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   emergencyNumber: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
+    textAlign: 'right',
   },
   scanButtonContainer: {
     alignItems: 'center',

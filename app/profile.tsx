@@ -41,7 +41,7 @@ function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { profileImage, setProfileImage, userName } = useProfile();
-  const { userStatus, accommodationOffers, simulateOffers } = useUserStatus();
+  const { userStatus, accommodationOffers, simulateOffers, approvedAccommodation, resetToSearching } = useUserStatus();
   const { showImagePickerOptions } = useImagePicker();
   
   // Dynamic colors that adapt to system theme
@@ -104,10 +104,31 @@ function ProfileScreen() {
     router.push('/accommodation-offers');
   };
 
+  const handleResetDemo = () => {
+    Alert.alert(
+      'Demo Reset',
+      'Reset to searching phase? (This is just for demo purposes)',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Reset', style: 'destructive', onPress: resetToSearching },
+      ]
+    );
+  };
+
   const handleMenuPress = (label: string) => {
     switch (label) {
       case 'Personal information':
         router.push('/personal-information');
+        break;
+      case 'Payments and payouts':
+        if (approvedAccommodation) {
+          Alert.alert(
+            'Payments & Payouts',
+            `Monthly Rent: ${approvedAccommodation.price}\n\nMove-in Date: ${new Date(approvedAccommodation.moveInDate).toLocaleDateString()}\nLease End: ${new Date(approvedAccommodation.leaseEndDate).toLocaleDateString()}\n\nFull payments dashboard coming soon!`
+          );
+        } else {
+          Alert.alert('Coming Soon', `${label} feature coming soon!`);
+        }
         break;
       default:
         Alert.alert('Coming Soon', `${label} feature coming soon!`);
@@ -156,7 +177,9 @@ function ProfileScreen() {
             </TouchableOpacity>
           </View>
           <ThemedText style={styles.name}>{userName}</ThemedText>
-          <ThemedText style={styles.subtitle}>Show profile</ThemedText>
+          <ThemedText style={styles.subtitle}>
+            {approvedAccommodation ? `Room ${approvedAccommodation.roomNumber}` : 'Show profile'}
+          </ThemedText>
         </View>
 
         {/* Menu Sections */}
@@ -240,6 +263,22 @@ function ProfileScreen() {
               </TouchableOpacity>
             )}
           </>
+        )}
+
+        {/* Demo Reset Button - Only show if user is approved/resident */}
+        {(userStatus === 'approved' || userStatus === 'resident') && (
+          <TouchableOpacity 
+            style={[
+              styles.demoButton, 
+              { 
+                backgroundColor: colors.error,
+              }
+            ]} 
+            onPress={handleResetDemo}
+          >
+            <Ionicons name="refresh" size={20} color="#fff" style={styles.demoButtonIcon} />
+            <ThemedText style={styles.demoButtonText}>Demo: Reset to Searching</ThemedText>
+          </TouchableOpacity>
         )}
 
         {/* Logout Button */}

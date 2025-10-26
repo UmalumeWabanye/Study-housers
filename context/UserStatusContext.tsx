@@ -150,6 +150,8 @@ type UserStatusContextType = {
   declineOffer: (offerId: string) => Promise<void>;
   simulateOffers: () => void;
   resetToSearching: () => void;
+  isFirstTimeAccess: boolean;
+  markAsReturningUser: () => void;
 };
 
 const UserStatusContext = createContext<UserStatusContextType | undefined>(undefined);
@@ -170,6 +172,7 @@ export const UserStatusProvider: React.FC<UserStatusProviderProps> = ({ children
   const [userStatus, setUserStatusState] = useState<UserStatus>('searching');
   const [approvedAccommodation, setApprovedAccommodationState] = useState<ApprovedAccommodation | null>(null);
   const [accommodationOffers, setAccommodationOffersState] = useState<AccommodationOffer[]>([]);
+  const [isFirstTimeAccess, setIsFirstTimeAccess] = useState<boolean>(true);
 
   // Load user status from AsyncStorage on mount
   useEffect(() => {
@@ -178,6 +181,7 @@ export const UserStatusProvider: React.FC<UserStatusProviderProps> = ({ children
         const savedStatus = await AsyncStorage.getItem('userStatus');
         const savedAccommodation = await AsyncStorage.getItem('approvedAccommodation');
         const savedOffers = await AsyncStorage.getItem('accommodationOffers');
+        const hasAccessedBefore = await AsyncStorage.getItem('hasAccessedPhase2');
         
         if (savedStatus && ['searching', 'approved', 'resident'].includes(savedStatus)) {
           setUserStatusState(savedStatus as UserStatus);
@@ -191,6 +195,11 @@ export const UserStatusProvider: React.FC<UserStatusProviderProps> = ({ children
         if (savedOffers) {
           const parsedOffers = JSON.parse(savedOffers);
           setAccommodationOffersState(parsedOffers);
+        }
+
+        // Check if this is first time accessing Phase 2
+        if (hasAccessedBefore === 'true') {
+          setIsFirstTimeAccess(false);
         }
       } catch (error) {
         console.error('Error loading user status:', error);
@@ -256,6 +265,11 @@ export const UserStatusProvider: React.FC<UserStatusProviderProps> = ({ children
       await setApprovedAccommodation(approvedAccommodation);
       await setAccommodationOffers(updatedOffers);
       await setUserStatus('approved');
+      
+      // Reset to first-time access when entering Phase 2
+      console.log('acceptOffer: Resetting to first-time access');
+      await AsyncStorage.removeItem('hasAccessedPhase2');
+      setIsFirstTimeAccess(true);
     } catch (error) {
       console.error('Error accepting offer:', error);
       throw error;
@@ -290,8 +304,22 @@ export const UserStatusProvider: React.FC<UserStatusProviderProps> = ({ children
       await setApprovedAccommodation(null);
       await setAccommodationOffers([]);
       await setUserStatus('searching');
+      // Reset first-time access flag when going back to searching
+      await AsyncStorage.removeItem('hasAccessedPhase2');
+      setIsFirstTimeAccess(true);
     } catch (error) {
       console.error('Error resetting to searching:', error);
+    }
+  };
+
+  // Mark user as returning (no longer first time)
+  const markAsReturningUser = async () => {
+    try {
+      console.log('markAsReturningUser: Setting hasAccessedPhase2 to true');
+      await AsyncStorage.setItem('hasAccessedPhase2', 'true');
+      setIsFirstTimeAccess(false);
+    } catch (error) {
+      console.error('Error marking as returning user:', error);
     }
   };
 
@@ -308,6 +336,8 @@ export const UserStatusProvider: React.FC<UserStatusProviderProps> = ({ children
         acceptOffer,
         declineOffer,
         simulateOffers,
+        isFirstTimeAccess,
+        markAsReturningUser,
       }}
     >
       {children}
