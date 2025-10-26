@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ProfileProvider } from '@/context/ProfileContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { UserStatusProvider } from '@/context/UserStatusContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '../lib/supabase';
 
@@ -81,14 +82,16 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider>
         <ProfileProvider>
-          <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <StatusBar style="auto" />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="auth" />
-              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-            </Stack>
-          </NavigationThemeProvider>
+          <UserStatusProvider>
+            <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+              <StatusBar style="auto" />
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="auth" />
+                <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+              </Stack>
+            </NavigationThemeProvider>
+          </UserStatusProvider>
         </ProfileProvider>
       </ThemeProvider>
     </SafeAreaProvider>

@@ -4,12 +4,14 @@ import { ActivityIndicator, View } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { useTheme } from '@/context/ThemeContext';
+import { useUserStatus } from '@/context/UserStatusContext';
 import { Ionicons } from '@expo/vector-icons';
 import { isDemoAuth, setDemoAuth } from '../../lib/demoAuth';
 import { getUser, onAuthStateChange } from '../../lib/supabase';
 
 export default function TabLayout() {
   const { theme } = useTheme();
+  const { userStatus } = useUserStatus();
   const router = useRouter();
   const [checking, setChecking] = React.useState(true);
 
@@ -61,6 +63,97 @@ export default function TabLayout() {
     );
   }
 
+  // For approved/resident users, show different tab structure
+  if (userStatus === 'approved' || userStatus === 'resident') {
+    return (
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: theme.primary,
+          tabBarInactiveTintColor: theme.textSecondary,
+          tabBarStyle: {
+            backgroundColor: theme.background,
+            borderTopColor: theme.border,
+          },
+          headerShown: false,
+          tabBarButton: HapticTab,
+        }}>
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Home',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'home' : 'home-outline'}
+                size={28}
+                color={color}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="news-feed"
+          options={{
+            title: 'News',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'newspaper' : 'newspaper-outline'}
+                size={28}
+                color={color}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="transportation"
+          options={{
+            title: 'Transport',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'bus' : 'bus-outline'}
+                size={28}
+                color={color}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="access-card"
+          options={{
+            title: 'Access',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'key' : 'key-outline'}
+                size={28}
+                color={color}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="chat"
+          options={{
+            title: 'Support',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'chatbubbles' : 'chatbubbles-outline'}
+                size={28}
+                color={color}
+              />
+            ),
+          }}
+        />
+        {/* Hide searching-only tab for approved users */}
+        <Tabs.Screen
+          name="explore"
+          options={{
+            href: null,
+          }}
+        />
+      </Tabs>
+    );
+  }
+
+  // For searching users, show original tab structure
   return (
     <Tabs
       screenOptions={{
@@ -110,6 +203,25 @@ export default function TabLayout() {
               color={color}
             />
           ),
+        }}
+      />
+      {/* Hide Phase 2 tabs for searching users */}
+      <Tabs.Screen
+        name="news-feed"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="transportation"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="access-card"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

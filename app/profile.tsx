@@ -1,5 +1,6 @@
 import { ThemedText, ThemedView } from '@/components/themed-components';
 import { useProfile } from '@/context/ProfileContext';
+import { useUserStatus } from '@/context/UserStatusContext';
 import { useImagePicker } from '@/hooks/use-image-picker';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,6 +41,7 @@ function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { profileImage, setProfileImage, userName } = useProfile();
+  const { userStatus, accommodationOffers, simulateOffers } = useUserStatus();
   const { showImagePickerOptions } = useImagePicker();
   
   // Dynamic colors that adapt to system theme
@@ -73,8 +75,43 @@ function ProfileScreen() {
     );
   };
 
+  const handleDemoOffers = () => {
+    Alert.alert(
+      'Demo: Simulate Accommodation Offers',
+      'This will simulate receiving multiple accommodation offers from different properties. You can then review and accept/decline them.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Send Offers!', onPress: async () => {
+          try {
+            await simulateOffers();
+            Alert.alert(
+              'Offers Received! 📧',
+              `${userName}, you've received accommodation offers! Check your offers to review and respond.`,
+              [{ 
+                text: 'View Offers', 
+                onPress: () => router.push('/accommodation-offers')
+              }]
+            );
+          } catch {
+            Alert.alert('Error', 'Failed to simulate offers');
+          }
+        }},
+      ]
+    );
+  };
+
+  const handleViewOffers = () => {
+    router.push('/accommodation-offers');
+  };
+
   const handleMenuPress = (label: string) => {
-    Alert.alert('Coming Soon', `${label} feature coming soon!`);
+    switch (label) {
+      case 'Personal information':
+        router.push('/personal-information');
+        break;
+      default:
+        Alert.alert('Coming Soon', `${label} feature coming soon!`);
+    }
   };
 
   return (
@@ -169,6 +206,41 @@ function ProfileScreen() {
             </View>
           </View>
         ))}
+
+        {/* Demo Section - Only show if user is searching */}
+        {userStatus === 'searching' && (
+          <>
+            {accommodationOffers.length > 0 ? (
+              <TouchableOpacity 
+                style={[
+                  styles.demoButton, 
+                  { 
+                    backgroundColor: colors.warning,
+                  }
+                ]} 
+                onPress={handleViewOffers}
+              >
+                <Ionicons name="mail" size={20} color="#fff" style={styles.demoButtonIcon} />
+                <ThemedText style={styles.demoButtonText}>
+                  View Offers ({accommodationOffers.filter(o => o.status === 'pending').length})
+                </ThemedText>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                style={[
+                  styles.demoButton, 
+                  { 
+                    backgroundColor: colors.success,
+                  }
+                ]} 
+                onPress={handleDemoOffers}
+              >
+                <Ionicons name="flash" size={20} color="#fff" style={styles.demoButtonIcon} />
+                <ThemedText style={styles.demoButtonText}>Get Demo Offers</ThemedText>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
 
         {/* Logout Button */}
         <TouchableOpacity 
@@ -339,6 +411,26 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     marginLeft: 12,
+  },
+  demoButton: {
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  demoButtonIcon: {
+    marginRight: 8,
+  },
+  demoButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
   logoutButton: {
     borderRadius: 16,

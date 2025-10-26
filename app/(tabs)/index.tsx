@@ -2,6 +2,7 @@ import AdvancedSearchModal from '@/components/AdvancedSearchModal';
 import PredictiveSearch from '@/components/PredictiveSearch';
 import { ThemedText, ThemedView } from '@/components/themed-components';
 import { useProfile } from '@/context/ProfileContext';
+import { useUserStatus } from '@/context/UserStatusContext';
 import { useTheme } from '@/hooks/use-theme';
 import { ENHANCED_LISTINGS } from '@/lib/enhancedPropertyData';
 import { SearchFilters, SearchStorage } from '@/lib/searchStorage';
@@ -10,6 +11,7 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ApprovedHomeScreen from '../approved-home';
 
 const { width } = Dimensions.get('window');
 
@@ -39,10 +41,16 @@ export default function Index() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { profileImage } = useProfile();
+  const { userStatus } = useUserStatus();
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(SearchStorage.getDefaultFilters());
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+
+  // If user is approved or resident, show the approved home screen
+  if (userStatus === 'approved' || userStatus === 'resident') {
+    return <ApprovedHomeScreen />;
+  }
 
   // Filter options based on badges
   const filterOptions = ['All', 'Popular', 'New', 'Budget'];
@@ -64,6 +72,8 @@ export default function Index() {
     setSearchFilters(filters);
     console.log('Applied filters:', filters);
   };
+
+
 
   // Enhanced filtering logic based on search query and advanced filters
   const getFilteredListings = () => {
@@ -364,6 +374,19 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  demoButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  demoButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   searchContainer: {
     marginBottom: 24,
